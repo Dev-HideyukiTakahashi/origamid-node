@@ -16,13 +16,16 @@ export class Core {
     const req = await customRequest(request);
     const res = await customResponse(response);
 
-    const handler = this.router.find(req.method || '', req.pathname);
+    const matched = this.router.find(req.method || '', req.pathname);
 
-    if (handler) {
-      handler(req, res);
-    } else {
+    if (!matched) {
       res.status(404).end('Não encontrado');
     }
+
+    const { route, params } = matched;
+    req.params = params;
+
+    await route(req, res);
   };
 
   init() {

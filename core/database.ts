@@ -38,14 +38,16 @@ db.exec(/*sql*/ `
 
 export function criarCurso({ slug, nome, descricao }) {
   try {
-    db.prepare(
-      /*sql*/ `
+    return db
+      .prepare(
+        /*sql*/ `
   INSERT OR IGNORE INTO cursos 
     (slug, nome, descricao)
   VALUES
     (?, ?, ?)
   `,
-    ).run(slug, nome, descricao);
+      )
+      .run(slug, nome, descricao);
   } catch (error) {
     console.log(error);
     return null;
@@ -54,14 +56,16 @@ export function criarCurso({ slug, nome, descricao }) {
 
 export function criarAula({ slug, nome, cursoSlug }) {
   try {
-    db.prepare(
-      /*sql*/ `
+    return db
+      .prepare(
+        /*sql*/ `
   INSERT OR IGNORE INTO aulas 
     (slug, nome, curso_id)
   VALUES
     (?, ?, (SELECT id FROM cursos WHERE slug = ?))
   `,
-    ).run(slug, nome, cursoSlug);
+      )
+      .run(slug, nome, cursoSlug);
   } catch (error) {
     console.log(error);
     return null;
