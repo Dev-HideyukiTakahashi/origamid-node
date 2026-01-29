@@ -1,2 +1,6 @@
 node_modules
 .vscode
+
+*.sqlite
+*.sqlite-wal
+*.sqlite-shm
