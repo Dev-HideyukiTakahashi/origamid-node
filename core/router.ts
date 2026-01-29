@@ -1,5 +1,5 @@
-import type { CustomRequest } from './custom-request.ts';
-import type { CustomResponse } from './custom-response.ts';
+import type { CustomRequest } from './http/custom-request.ts';
+import type { CustomResponse } from './http/custom-response.ts';
 
 type Handler = (req: CustomRequest, res: CustomResponse) => Promise<void> | void;
 

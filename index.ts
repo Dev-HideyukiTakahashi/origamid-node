@@ -1,9 +1,4 @@
-// SERVER
-
-import { createServer } from 'node:http';
-import { customRequest } from './custom-request.ts';
-import { customResponse } from './custom-response.ts';
-import { Router } from './router.ts';
+import { Core } from './core/core.ts';
 import {
   criarAula,
   criarCurso,
@@ -11,12 +6,11 @@ import {
   pegarAulas,
   pegarCurso,
   pegarCursos,
-} from './database.ts';
+} from './core/database.ts';
 
-// ROTAS
-const router = new Router();
+const core = new Core();
 
-router.post('/cursos', (req, res) => {
+core.router.post('/cursos', (req, res) => {
   const { slug, nome, descricao } = req.body;
   const criado = criarCurso({ slug, nome, descricao });
 
@@ -27,7 +21,7 @@ router.post('/cursos', (req, res) => {
   }
 });
 
-router.post('/aulas', (req, res) => {
+core.router.post('/aulas', (req, res) => {
   const { slug, nome, cursoSlug } = req.body;
   const criada = criarAula({ slug, nome, cursoSlug });
 
@@ -38,13 +32,13 @@ router.post('/aulas', (req, res) => {
   }
 });
 
-router.get('/cursos', (req, res) => {
+core.router.get('/cursos', (req, res) => {
   const cursos = pegarCursos();
 
   res.status(200).json(cursos);
 });
 
-router.get('/curso', (req, res) => {
+core.router.get('/curso', (req, res) => {
   const slug = req.query.get('slug');
   const curso = pegarCurso(slug);
 
@@ -55,13 +49,13 @@ router.get('/curso', (req, res) => {
   }
 });
 
-router.get('/aulas', (req, res) => {
+core.router.get('/aulas', (req, res) => {
   const aulas = pegarAulas();
 
   res.status(200).json(aulas);
 });
 
-router.get('/aula', (req, res) => {
+core.router.get('/aula', (req, res) => {
   const curso = req.query.get('curso');
   const slug = req.query.get('slug');
   const aula = pegarAula(curso, slug);
@@ -76,20 +70,8 @@ router.get('/aula', (req, res) => {
   }
 });
 
-// MAIN
-const server = createServer(async (request, response) => {
-  const req = await customRequest(request);
-  const res = await customResponse(response);
-
-  const handler = router.find(req.method || '', req.pathname);
-
-  if (handler) {
-    handler(req, res);
-  } else {
-    res.status(404).end('Não encontrado');
-  }
+core.router.get('/', (req, res) => {
+  res.status(200).end('Hello');
 });
 
-server.listen(3000, () => {
-  console.log('Server is running at port 3000');
-});
+core.init();
