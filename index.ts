@@ -1,7 +1,11 @@
 import { Core } from './core/core.ts';
 import { pegarCurso } from './core/database.ts';
+import { bodyJson } from './core/middleware/body-json.ts';
+import { logger } from './core/middleware/logger.ts';
 
 const core = new Core();
+
+core.router.use([logger]);
 
 core.router.get('/curso/:slug', (req, res) => {
   const { slug } = req.params;
@@ -16,10 +20,6 @@ core.router.get('/curso/:slug', (req, res) => {
 
 core.router.get('/', (req, res) => {
   res.status(200).json('ola');
-});
-
-core.router.get('/aula/:aula', (req, res) => {
-  res.status(200).json('aula');
 });
 
 core.init();
