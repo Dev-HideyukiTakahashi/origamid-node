@@ -43,7 +43,7 @@ export class Core {
       await route.handler(req, res);
     } catch (error) {
       if (error instanceof RouteError) {
-        res.status(error.status).json({ error: error.message });
+        res.status(error.status).json({ status: error.status, error: error.message });
       } else {
         res.status(500).json({ error: 'server error' });
       }
