@@ -169,6 +169,85 @@ const functions = {
     const body = await response.json();
     console.table(body);
   },
+
+  async postUser() {
+    const response = await fetch(base + '/auth/user', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        name: 'John Doe',
+        username: 'john',
+        email: 'john@email.com',
+        password: '12345678',
+      }),
+    });
+
+    const body = await response.json();
+    console.table(body);
+  },
+
+  async completeLesson() {
+    const response = await fetch(base + '/lms/lesson/complete', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        courseId: 1,
+        lessonId: 6,
+      }),
+    });
+
+    const body = await response.json();
+    console.table(body);
+  },
+
+  async resetCourse() {
+    const response = await fetch(base + '/lms/course/reset', {
+      method: 'delete',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        courseId: 1,
+      }),
+    });
+
+    const body = await response.json();
+    console.table(body);
+  },
+
+  async selectCourses() {
+    const response = await fetch(base + '/lms/courses');
+
+    console.log(await response.json());
+  },
+
+  async selectCourse() {
+    const response = await fetch(base + '/lms/course/html-e-css');
+
+    console.log(await response.json());
+  },
+
+  async selectLesson() {
+    const response = await fetch(base + '/lms/lesson/html-e-css/tags-basicas');
+
+    console.log(await response.json());
+  },
+
+  async getCertificates() {
+    const response = await fetch(base + '/lms/certificates');
+
+    console.log(await response.json());
+  },
+
+  async getCertificate() {
+    const response = await fetch(base + '/lms/certificate/f6e2b1b7293e0915');
+
+    console.log(await response.json());
+  },
 };
 
 // for (const lesson of lessons) {
