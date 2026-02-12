@@ -6,6 +6,8 @@ export interface CustomResponse extends ServerResponse {
 
   // Envia o JSON e encerra a resposta
   json(data: any): void;
+
+  setCookie(cookie: string): void;
 }
 
 export async function customResponse(response: ServerResponse): Promise<CustomResponse> {
@@ -26,6 +28,21 @@ export async function customResponse(response: ServerResponse): Promise<CustomRe
       console.error('JSON Error:', error);
       res.status(500).end('Internal Server Error');
     }
+  };
+
+  res.setCookie = cookie => {
+    const current = res.getHeader('Set-Cookie');
+
+    if (current === undefined) {
+      return res.setHeader('Set-Cookie', [cookie]);
+    }
+
+    if (Array.isArray(current)) {
+      current.push(cookie);
+      return res.setHeader('Set-Cookie', cookie);
+    }
+
+    res.setHeader('Set-Cookie', [String(current), cookie]);
   };
 
   return res;

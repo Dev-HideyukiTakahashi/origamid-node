@@ -1,11 +1,15 @@
-import { Buffer } from 'node:buffer';
 import type { IncomingMessage } from 'node:http';
+import { parseCookies } from '../utils/parse-cookie.ts';
+import type { UserRole } from '../../api/auth/query.ts';
 
 export interface CustomRequest extends IncomingMessage {
   query: URLSearchParams;
   pathname: string;
   params: Record<string, any>;
   body: Record<string, any>;
+  cookies: Record<string, string | undefined>;
+  session: { user_id: number; role: UserRole; expires_ms: number } | null;
+  ip: string;
 }
 
 export async function customRequest(request: IncomingMessage): Promise<CustomRequest> {
@@ -17,6 +21,9 @@ export async function customRequest(request: IncomingMessage): Promise<CustomReq
   req.pathname = url.pathname;
   req.params = {};
   req.body = {};
+  req.cookies = parseCookies(req.headers.cookie);
+  req.ip = req.socket.remoteAddress || '127.0.0.1';
+  req.session = null;
 
   return req;
 }
