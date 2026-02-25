@@ -25,7 +25,20 @@ type SessionData = {
   revoked: number; // 0|1
 };
 
+type ResetData = {
+  token_hash: Buffer;
+  user_id: number;
+  created: number;
+  expires: number;
+  ip: string;
+  ua: string;
+};
+
 type SessionCreate = Omit<SessionData, 'created' | 'revoked' | 'expires'> & {
+  expires_ms: number;
+};
+
+type ResetCreate = Omit<ResetData, 'created' | 'expires'> & {
   expires_ms: number;
 };
 
@@ -60,6 +73,30 @@ export class AuthQuery extends Query {
     }
   }
 
+  selectUser(key: 'email' | 'username' | 'id', value: string | number) {
+    return this.db
+      .query(
+        /*sql*/ `
+        SELECT "id", "password_hash" , "email"
+        FROM "users"
+        WHERE ${key} = ?
+        `,
+      )
+      .get(value) as { id: number; password_hash: string; email: string } | undefined;
+  }
+
+  updateUser(user_id: number, key: 'password_hash' | 'email' | 'name', value: string) {
+    return this.db
+      .query(
+        /*sql*/ `
+        UPDATE "users"
+        SET ${key} = ?
+        WHERE id = ?
+        `,
+      )
+      .run(value, user_id);
+  }
+
   selectSession(sid_hash: Buffer) {
     try {
       return this.db
@@ -74,16 +111,31 @@ export class AuthQuery extends Query {
     }
   }
 
-  revokeSession(key: 'sid_hash' | 'user_id', sid_hash: Buffer) {
+  revokeSession(sid_hash: Buffer) {
     try {
       return this.db
         .query(
           /*sql*/ `
           UPDATE "sessions"
           SET "revoked" = 1
-          WHERE ${key} = ?`,
+          WHERE sid_hash = ?`,
         )
         .run(sid_hash);
+    } catch (error) {
+      console.log(error);
+    }
+  }
+
+  revokeSessions(user_id: number) {
+    try {
+      return this.db
+        .query(
+          /*sql*/ `
+          UPDATE "sessions"
+          SET "revoked" = 1
+          WHERE user_id = ?`,
+        )
+        .run(user_id);
     } catch (error) {
       console.log(error);
     }
@@ -113,6 +165,52 @@ export class AuthQuery extends Query {
           WHERE "id" = ?`,
         )
         .get(id) as { role: UserRole } | undefined;
+    } catch (error) {
+      console.log(error);
+    }
+  }
+
+  insertReset({ token_hash, user_id, expires_ms, ip, ua }: ResetCreate) {
+    try {
+      return this.db
+        .query(
+          /*sql*/ `
+      INSERT OR IGNORE INTO "resets"
+      ("token_hash", "user_id", "expires", "ip", "ua")
+      VALUES
+      (?, ?, ?, ?, ?)
+      `,
+        )
+        .run(token_hash, user_id, Math.floor(expires_ms / 1000), ip, ua);
+    } catch (error) {
+      console.log(error);
+    }
+  }
+
+  selectReset(token_hash: Buffer) {
+    try {
+      return this.db
+        .query(
+          /*sql*/ `
+          SELECT "r".*, "r"."expires" * 1000 as "expires_ms" FROM "resets" as "r"
+          WHERE "token_hash" = ?`,
+        )
+        .get(token_hash) as (ResetData & { expires_ms: number }) | undefined;
+    } catch (error) {
+      console.log(error);
+    }
+  }
+
+  deleteReset(user_id: number) {
+    try {
+      return this.db
+        .query(
+          /*sql*/ `
+          DELETE from "resets"
+          WHERE user_id = ?
+        `,
+        )
+        .run(user_id);
     } catch (error) {
       console.log(error);
     }

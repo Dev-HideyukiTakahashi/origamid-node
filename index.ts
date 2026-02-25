@@ -3,8 +3,6 @@ import { AuthApi } from './api/auth/index.ts';
 import { LmsApi } from './api/lms/index.ts';
 import { Core } from './core/core.ts';
 import { logger } from './core/middleware/logger.ts';
-import { RouteError } from './core/utils/route-error.ts';
-import { sha256 } from './api/auth/utils.ts';
 
 const core = new Core();
 

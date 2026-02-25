@@ -180,7 +180,7 @@ const functions = {
         name: 'John Doe',
         username: 'john',
         email: 'john@email.com',
-        password: '12345678',
+        password: '123456',
       }),
     });
 
