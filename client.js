@@ -204,6 +204,19 @@ const functions = {
     console.table(body);
   },
 
+  async postBig() {
+    const response = await fetch(base + '/', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify('teste'),
+    });
+
+    const body = await response.json();
+    console.table(body);
+  },
+
   async resetCourse() {
     const response = await fetch(base + '/lms/course/reset', {
       method: 'delete',
@@ -247,6 +260,12 @@ const functions = {
     const response = await fetch(base + '/lms/certificate/f6e2b1b7293e0915');
 
     console.log(await response.json());
+  },
+
+  async ataque() {
+    for (let i = 0; i < 10; i++) {
+      fetch(base + '/limite');
+    }
   },
 };
 

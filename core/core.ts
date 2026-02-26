@@ -54,5 +54,8 @@ export class Core {
     this.server.listen(3000, () => {
       console.log('Server is running at port 3000');
     });
+    this.server.on('clientError', (error, socket) => {
+      socket.destroy();
+    });
   }
 }

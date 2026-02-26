@@ -157,6 +157,7 @@
         });
 
         const body = await response.json();
+        console.log(body);
         result.innerText = JSON.stringify(body, null, 2);
         if (response.ok) {
           window.location.reload();

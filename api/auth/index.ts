@@ -6,6 +6,10 @@ import { AuthQuery } from './query.ts';
 import { COOKIE_SID_KEY, SessionService } from './services/session.ts';
 import { authTables } from './tables.ts';
 import { Password } from './utils/password.ts';
+import { validate } from '../../core/utils/validate.ts';
+import { rateLimit } from '../../core/middleware/rate-limit.ts';
+
+rateLimit;
 
 export class AuthApi extends Api {
   query = new AuthQuery(this.db);
@@ -15,7 +19,12 @@ export class AuthApi extends Api {
 
   handlers: Record<string, Handler> = {
     postUser: async (req, res) => {
-      const { name, username, email, password } = req.body;
+      const { name, username, email, password } = {
+        name: validate.string(req.body.name),
+        username: validate.string(req.body.username),
+        email: validate.email(req.body.email),
+        password: validate.password(req.body.password),
+      };
 
       const emailExists = this.query.selectUser('email', email);
 
@@ -41,7 +50,11 @@ export class AuthApi extends Api {
     },
 
     postLogin: async (req, res) => {
-      const { email, password } = req.body;
+      const { email, password } = {
+        email: validate.email(req.body.email),
+        password: validate.password(req.body.password),
+      };
+
       const user = this.query.selectUser('email', email);
 
       if (!user) {
@@ -65,7 +78,10 @@ export class AuthApi extends Api {
     },
 
     updatePassword: async (req, res) => {
-      const { password, new_password } = req.body;
+      const { password, new_password } = {
+        password: validate.password(req.body.password),
+        new_password: validate.password(req.body.new_password),
+      };
 
       if (!req.session) {
         throw new RouteError(401, 'não autorizado');
@@ -102,7 +118,10 @@ export class AuthApi extends Api {
     },
 
     passwordForgot: async (req, res) => {
-      const { email } = req.body;
+      const { email } = {
+        email: validate.email(req.body.email),
+      };
+
       const user = this.query.selectUser('email', email);
 
       if (!user) {
@@ -127,7 +146,10 @@ export class AuthApi extends Api {
     },
 
     passwordReset: async (req, res) => {
-      const { new_password, token } = req.body;
+      const { new_password, token } = {
+        new_password: validate.password(req.body.new_password),
+        token: validate.string(req.body.token),
+      };
       const reset = this.session.validateToken(token);
 
       if (!reset) {
@@ -168,14 +190,14 @@ export class AuthApi extends Api {
   }
 
   routes(): void {
-    this.router.post('/auth/user', this.handlers.postUser);
-    this.router.post('/auth/login', this.handlers.postLogin);
+    this.router.post('/auth/user', this.handlers.postUser, [rateLimit(30_000, 15)]);
+    this.router.post('/auth/login', this.handlers.postLogin, [rateLimit(30_000, 5)]);
     this.router.delete('/auth/logout', this.handlers.deleteSession);
     this.router.put('/auth/update/password', this.handlers.updatePassword, [
       this.auth.guard('user'),
     ]);
-    this.router.post('/auth/password/forgot', this.handlers.passwordForgot);
-    this.router.post('/auth/password/reset', this.handlers.passwordReset);
+    this.router.post('/auth/password/forgot', this.handlers.passwordForgot, [rateLimit(30_000, 5)]);
+    this.router.post('/auth/password/reset', this.handlers.passwordReset, [rateLimit(30_000, 5)]);
     this.router.get('/auth/session', this.handlers.getSession, [this.auth.guard('user')]);
   }
 }
