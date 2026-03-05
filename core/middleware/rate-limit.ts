@@ -46,7 +46,5 @@ export const rateLimit = (time: number, max: number): Middleware => {
       res.setHeader('Retry-After', `${tLeft}`);
       throw new RouteError(429, 'rate limit');
     }
-
-    console.log(requests);
   };
 };

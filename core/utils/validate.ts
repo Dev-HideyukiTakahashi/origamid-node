@@ -55,6 +55,14 @@ function password(x: unknown) {
   return password_regex.test(x) ? x : undefined;
 }
 
+const file_regex = /^(?!\.)[A-Za-z0-9._-]+$/;
+
+/** verifica se não começa com ponto ou se não possui caracteres especiais */
+function file(x: unknown) {
+  if (typeof x !== 'string') return undefined;
+  return file_regex.test(x) ? x : undefined;
+}
+
 type Parse<Value> = (x: unknown) => Value | undefined;
 
 function required<Value>(fn: Parse<Value>, error: string) {
@@ -73,6 +81,7 @@ export const validate = {
   object: required(object, 'object esperado'),
   email: required(email, 'email invalido'),
   password: required(password, 'password invalido'),
+  file: required(file, 'nome de arquivo invalido'),
   optional: {
     string,
     number,
@@ -80,5 +89,6 @@ export const validate = {
     object,
     email,
     password,
+    file,
   },
 };
