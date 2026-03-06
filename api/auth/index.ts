@@ -134,11 +134,11 @@ export class AuthApi extends Api {
         ua: req.headers['user-agent'] || '',
       });
 
-      const resetLink = `${req.baseurl}/password/reset/?token=${token}`;
+      const resetLink = `${req.baseurl}/#/resetar/?token=${token}`;
       const mailContent = {
         to: user.email,
         subject: 'Password Reset',
-        body: `Utilize o link abaixo para resetar a sua senha: \r\n ${resetLink}`,
+        body: `Utilize o link abaixo para resetar a sua senha: \r\n${resetLink}`,
       };
 
       console.log(mailContent);
@@ -171,7 +171,7 @@ export class AuthApi extends Api {
         throw new RouteError(401, 'não autorizado');
       }
 
-      res.status(200).json({ title: 'valido' });
+      res.status(200).json({ title: 'valido', role: req.session.role });
     },
 
     deleteSession: (req, res) => {

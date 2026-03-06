@@ -185,6 +185,17 @@ export class LmsQuery extends Query {
       .run(userId, courseId);
   }
 
+  deleteCertificate(userId: number, courseId: number) {
+    return this.db
+      .query(
+        /*sql*/ `
+        DELETE FROM certificates
+        WHERE user_id = ? AND course_id = ?
+      `,
+      )
+      .run(userId, courseId);
+  }
+
   selectProgress(userId: number, courseId: number) {
     return this.db
       .query(
@@ -196,7 +207,7 @@ export class LmsQuery extends Query {
         WHERE l.course_id = ?
       `,
       )
-      .all(courseId, userId) as { id: number; completed: string }[];
+      .all(userId, courseId) as { id: number; completed: string }[];
   }
 
   insertCertificated(userId: number, courseId: number) {
@@ -210,7 +221,7 @@ export class LmsQuery extends Query {
         RETURNING "id"
       `,
       )
-      .get(courseId, userId) as { id: string | undefined };
+      .get(userId, courseId) as { id: string } | undefined;
   }
 
   selectCertificates(userId: number) {

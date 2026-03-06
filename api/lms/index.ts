@@ -84,6 +84,7 @@ export class LmsApi extends Api {
 
     getCourse: (req, res) => {
       const { slug } = req.params;
+
       const course = this.query.selectCourse(slug);
       const lessons = this.query.selectLessons(slug);
 
@@ -117,6 +118,8 @@ export class LmsApi extends Api {
       if (result.changes === 0) {
         throw new RouteError(400, 'erro ao resetar curso');
       }
+
+      this.query.deleteCertificate(req.session.user_id, courseId);
 
       res.status(200).json({
         title: 'curso resetado',
@@ -188,16 +191,20 @@ export class LmsApi extends Api {
       }
 
       const progress = this.query.selectProgress(req.session.user_id, courseId);
+
       const incompleteLessons = progress.filter(item => !item.completed);
 
       if (progress.length > 0 && incompleteLessons.length === 0) {
-        console.log('Gerar certificado');
         const certificate = this.query.insertCertificated(req.session.user_id, courseId);
 
-        return res.status(201).json({ certificate: certificate!.id, title: 'aula concluída' });
+        if (!certificate) {
+          throw new RouteError(400, 'erro ao gerar certificado');
+        }
+
+        return res.status(201).json({ certificate: certificate.id, title: 'aula concluída' });
       }
 
-      res.status(201).json({ certificate: 'null', title: 'aula concluída' });
+      res.status(201).json({ certificate: null, title: 'aula concluída' });
     },
   } satisfies Api['handlers'];
 
