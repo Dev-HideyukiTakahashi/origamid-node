@@ -27,13 +27,13 @@ export class LmsApi extends Api {
 
       const result = this.query.insertCourse({ slug, title, description, lessons, hours });
 
-      if (result.changes === 0) {
+      if (result!.changes === 0) {
         throw new RouteError(400, 'erro ao criar curso');
       }
 
       res.status(201).json({
-        id: result.lastInsertRowid,
-        changes: result.changes,
+        id: result!.lastInsertRowid,
+        changes: result!.changes,
         title: 'curso criado',
       });
     },
@@ -42,16 +42,17 @@ export class LmsApi extends Api {
       if (!req.session) {
         throw new RouteError(401, 'não autorizado');
       }
+
       // validando dados
       const { courseSlug, slug, title, seconds, video, description, order, free } = {
-        courseSlug: validate.string(req.body.slug),
+        courseSlug: validate.string(req.body.courseSlug),
         slug: validate.string(req.body.slug),
-        title: validate.string(req.body.slug),
-        seconds: validate.number(req.body.slug),
-        video: validate.string(req.body.slug),
-        description: validate.string(req.body.slug),
-        order: validate.number(req.body.slug),
-        free: validate.number(req.body.slug),
+        title: validate.string(req.body.title),
+        seconds: validate.number(req.body.seconds),
+        video: validate.string(req.body.video),
+        description: validate.string(req.body.description),
+        order: validate.number(req.body.order),
+        free: validate.number(req.body.free),
       };
 
       const result = this.query.insertLesson({
@@ -65,13 +66,13 @@ export class LmsApi extends Api {
         free,
       });
 
-      if (result.changes === 0) {
+      if (result!.changes === 0) {
         throw new RouteError(400, 'erro ao criar aula');
       }
 
       res.status(201).json({
-        id: result.lastInsertRowid,
-        changes: result.changes,
+        id: result!.lastInsertRowid,
+        changes: result!.changes,
         title: 'aula criada',
       });
     },
@@ -80,6 +81,16 @@ export class LmsApi extends Api {
       const result = this.query.selectCourses();
 
       res.status(200).json(result);
+    },
+
+    getLessons: (req, res) => {
+      const lessons = this.query.selectAllLessons();
+
+      if (lessons.length === 0) {
+        throw new RouteError(404, 'nenhuma aula encontrada');
+      }
+
+      res.status(200).json(lessons);
     },
 
     getCourse: (req, res) => {
@@ -215,6 +226,7 @@ export class LmsApi extends Api {
   routes(): void {
     this.router.post('/lms/courses', this.handlers.postCourse, [this.auth.guard('admin')]);
     this.router.post('/lms/lessons', this.handlers.postLesson, [this.auth.guard('admin')]);
+    this.router.get('/lms/lessons', this.handlers.getLessons, [this.auth.guard('admin')]);
     this.router.get('/lms/courses', this.handlers.getCourses);
     this.router.get('/lms/course/:slug', this.handlers.getCourse, [this.auth.guard('user')]);
     this.router.delete('/lms/course/reset', this.handlers.resetCourse, [this.auth.guard('user')]);

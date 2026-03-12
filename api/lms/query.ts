@@ -39,16 +39,25 @@ type LessonCreate = Omit<LessonData, 'id' | 'course_id' | 'created'> & {
 
 export class LmsQuery extends Query {
   insertCourse({ slug, title, description, lessons, hours }: CourseCreate) {
-    return this.db
-      .query(
-        /*sql*/ `
-          INSERT OR IGNORE INTO courses
+    try {
+      return this.db
+        .query(
+          /*sql*/ `
+          INSERT INTO courses
           (slug, title, description, lessons, hours)
           VALUES
           (?, ?, ?, ?, ?)
+          ON CONFLICT ("slug") DO UPDATE SET
+          "title" = excluded.title,
+          "description" = excluded.description,
+          "lessons" = excluded.lessons,
+          "hours" = excluded.hours
           `,
-      )
-      .run(slug, title, description, lessons, hours);
+        )
+        .run(slug, title, description, lessons, hours);
+    } catch (error) {
+      console.log(error);
+    }
   }
 
   insertLesson({
@@ -61,18 +70,29 @@ export class LmsQuery extends Query {
     order,
     free,
   }: LessonCreate) {
-    return this.db
-      .query(
-        /*sql*/ `
-          INSERT OR IGNORE INTO lessons
+    try {
+      return this.db
+        .query(
+          /*sql*/ `
+          INSERT INTO lessons
           (course_id, slug, title, seconds, 
             video, description, "order", free)
           VALUES
           ((SELECT id FROM courses 
             WHERE slug = ?), ?, ?, ?, ?, ?, ?, ?)
+            ON CONFLICT ("course_id", "slug") DO UPDATE SET
+            "title" = excluded.title,
+            "description" = excluded.description,
+            "seconds" = excluded.seconds,
+            "order" = excluded."order",
+            "free" = excluded.free,
+            "video" = excluded.video
           `,
-      )
-      .run(courseSlug, slug, title, seconds, video, description, order, free);
+        )
+        .run(courseSlug, slug, title, seconds, video, description, order, free);
+    } catch (error) {
+      console.log(error);
+    }
   }
 
   selectCourses() {
@@ -107,6 +127,18 @@ export class LmsQuery extends Query {
     `,
       )
       .all(courseSlug) as LessonData[];
+  }
+
+  selectAllLessons() {
+    return this.db
+      .query(
+        /*sql*/ `
+      SELECT l.*, c.slug as courseSlug FROM lessons as l
+      JOIN courses as c ON c.id = l.course_id
+      ORDER BY l.course_id ASC, l."order" ASC LIMIT 100
+    `,
+      )
+      .all();
   }
 
   selectLesson(courseSlug: string, lessonSlug: string) {

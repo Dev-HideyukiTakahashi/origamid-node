@@ -183,6 +183,25 @@ export class AuthApi extends Api {
       res.setHeader('Vary', 'Cookie');
       res.status(204).json({ title: 'logout' });
     },
+
+    searchUsers: (req, res) => {
+      const { search, page } = {
+        search: validate.optional.string(req.query.get('search')),
+        page: validate.optional.number(req.query.get('page')),
+      };
+
+      const result = this.query.selectUsers(search, 5, page);
+
+      if (!result || result.length === 0) {
+        res.setHeader('X-Total-Count', '0');
+        return res.status(200).json([]);
+      }
+
+      const total = result[0].total;
+
+      res.setHeader('X-Total-Count', String(total));
+      res.status(200).json(result);
+    },
   } satisfies Api['handlers'];
 
   tables(): void {
@@ -190,7 +209,7 @@ export class AuthApi extends Api {
   }
 
   routes(): void {
-    this.router.post('/auth/user', this.handlers.postUser, [rateLimit(30_000, 15)]);
+    this.router.post('/auth/user', this.handlers.postUser, [rateLimit(30_000, 50)]);
     this.router.post('/auth/login', this.handlers.postLogin, [rateLimit(30_000, 5)]);
     this.router.delete('/auth/logout', this.handlers.deleteSession);
     this.router.put('/auth/update/password', this.handlers.updatePassword, [
@@ -199,5 +218,6 @@ export class AuthApi extends Api {
     this.router.post('/auth/password/forgot', this.handlers.passwordForgot, [rateLimit(30_000, 5)]);
     this.router.post('/auth/password/reset', this.handlers.passwordReset, [rateLimit(30_000, 5)]);
     this.router.get('/auth/session', this.handlers.getSession, [this.auth.guard('user')]);
+    this.router.get('/auth/users/search', this.handlers.searchUsers, [this.auth.guard('admin')]);
   }
 }

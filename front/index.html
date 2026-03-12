@@ -124,8 +124,8 @@
           <input type="number" name="free" id="free" value="0" />
           <label for="file">Video</label>
           <input type="file" name="file" id="file" />
-          <label for="video">Video Path</label>
-          <input type="text" name="video" id="video" />
+          <label for="video-path">Video Path</label>
+          <input type="text" name="video" id="video-path" />
 
           <button>Criar/Atualizar Curso</button>
         </form>
@@ -153,12 +153,13 @@
 
       <section id="usuarios" data-role="admin">
         <form>
-          <label for="s">Buscar</label>
-          <input type="text" name="s" id="s" />
+          <label for="search">Buscar</label>
+          <input type="text" name="search" id="s" />
           <label for="page">Página:</label>
           <input type="number" name="page" id="page" value="1" />
           <button class="hidden">Buscar</button>
         </form>
+        <div class="render"></div>
       </section>
     </div>
 
@@ -576,6 +577,42 @@
         align-items: center;
         font-family: var(--font);
       }
+
+      select {
+        margin-bottom: 2rem;
+      }
+
+      /* user search */
+      #usuarios ul {
+        margin-top: 1rem;
+        list-style: none;
+      }
+
+      #usuarios li {
+        display: grid;
+        grid-template-columns: 1fr 2fr;
+        gap: 1rem;
+        font-size: 0.75rem;
+        border-bottom: 2px dashed var(--gray-1);
+        padding: 0.5rem 0;
+        color: var(--gray-5);
+      }
+
+      .hidden {
+        display: none;
+      }
+
+      #pages {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.5rem;
+        margin-top: 1rem;
+      }
+
+      #pages button {
+        min-width: max-content;
+        padding: 0.25rem 0.75rem;
+      }
     </style>
 
     <script>
@@ -774,7 +811,7 @@
 
             let html = /*html*/ `
               <div>
-                <h2>${escape(lesson.title)}</h2>    
+                <h2>${escape(lesson.title)}</h2>
                 <div id="breadcrumb">
                   <a href='#/cursos'>Cursos</a> >
                   <a href='#/cursos/${curso}'>${curso}</a>
@@ -840,7 +877,120 @@
             if (token) token.value = query[1];
           }
         },
+
+        ['criar-curso']: async route => {
+          getData('/lms/courses', courses => {
+            const render = route.querySelector('.render');
+            const form = route.querySelector('form');
+            render.innerHTML = '';
+
+            const select = document.createElement('select');
+            select.name = 'courses-select';
+            select.add(new Option('Selecionar Curso', null));
+
+            let i = 0;
+            for (const course of courses) {
+              select.add(new Option(course.slug, i));
+              i++;
+            }
+            select.addEventListener('change', e => {
+              e.preventDefault();
+              const course = courses[select.value];
+              for (const key in course) {
+                const input = form.querySelector(`[name=${key}]`);
+                if (input) input.value = course[key];
+              }
+            });
+            render.append(select);
+          });
+        },
+
+        ['criar-aula']: route => {
+          getData('/lms/lessons', lessons => {
+            const render = route.querySelector('.render');
+            const form = route.querySelector('form');
+            const select = document.createElement('select');
+            render.innerHTML = '';
+            select.name = 'lessons-select';
+            let i = 0;
+            select.add(new Option('Selecionar Aula', null));
+
+            for (const lesson of lessons) {
+              select.add(new Option(`${lesson.courseSlug} - ${lesson.slug}`, i));
+              i++;
+            }
+
+            select.addEventListener('change', e => {
+              e.preventDefault();
+              const lesson = lessons[select.value];
+              for (const key in lesson) {
+                const input = form.querySelector(`[name=${key}]`);
+                if (input) input.value = lesson[key];
+              }
+            });
+
+            render.append(select);
+          });
+        },
+
+        usuarios: route => {
+          const render = route.querySelector('.render');
+
+          getData('/auth/users/search', (users, response) => {
+            const total = Number(response.headers.get('x-total-count'));
+            renderUsers(users, total, render);
+          });
+
+          const form = document.querySelector('#usuarios form');
+          form.addEventListener('submit', e => {
+            e.preventDefault();
+            const data = new FormData(form);
+
+            getData(
+              `/auth/users/search?search=${data.get('search')}&page=${data.get('page')}`,
+              (users, response) => {
+                const total = Number(response.headers.get('x-total-count'));
+                renderUsers(users, total, render);
+              },
+            );
+          });
+        },
       };
+
+      function renderUsers(users, total, render) {
+        render.innerHTML = '';
+        let html = '<ul>';
+        const pages = document.createElement('nav');
+        const page = document.getElementById('page');
+        const totalPages = Math.ceil(total / 5);
+        const form = document.querySelector('#usuarios form');
+
+        pages.id = 'pages';
+
+        if (totalPages > 1) {
+          for (let i = 1; i <= totalPages; i++) {
+            const button = document.createElement('button');
+            button.innerText = i;
+            button.addEventListener('click', e => {
+              page.value = i;
+              form.requestSubmit();
+            });
+            pages.append(button);
+          }
+        }
+
+        for (const user of users) {
+          html += /*html*/ `
+            <li>
+               <span>${escape(user.name)}</span>
+               <span>${escape(user.email)}</span>
+            </li>
+          `;
+        }
+        html += '</ul>';
+        render.innerHTML = html;
+        render.append(pages);
+      }
 
       // FORMULARIOS
       async function sendForm(method, url, id, callback) {
@@ -895,6 +1045,45 @@
 
       sendForm('POST', '/auth/password/forgot', 'perdeu');
       sendForm('POST', '/auth/password/reset', 'resetar');
+      sendForm('POST', '/lms/courses', 'criar-curso');
+
+      // upload arquivo
+      const lessonsForm = document.querySelector('#criar-aula form');
+      lessonsForm.addEventListener('submit', async e => {
+        e.preventDefault();
+        try {
+          const input = lessonsForm.querySelector('input[type="file"]');
+          if (!input) return;
+
+          const files = input.files;
+          if (!files || files.length === 0) return;
+
+          const responseFile = await fetch('/files', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/octet-stream',
+              'x-filename': files[0].name,
+            },
+            body: files[0],
+          });
+
+          const upload = await responseFile.json();
+          const data = new FormData(lessonsForm);
+          data.set('video', upload.path);
+
+          const responseLesson = await fetch('/lms/lessons', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify(Object.fromEntries(data)),
+          });
+
+          if (responseLesson.ok) location.reload();
+        } catch (error) {
+          console.log(error);
+        }
+      });
     </script>
   </body>
 </html>
