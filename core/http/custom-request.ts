@@ -1,6 +1,7 @@
 import type { IncomingMessage } from 'node:http';
 import { parseCookies } from '../utils/parse-cookie.ts';
 import type { UserRole } from '../../api/auth/query.ts';
+import { SERVER_NAME } from '../../env.ts';
 
 export interface CustomRequest extends IncomingMessage {
   query: URLSearchParams;
@@ -13,9 +14,18 @@ export interface CustomRequest extends IncomingMessage {
   baseurl: string;
 }
 
+function getIp(ip: string | string[] | undefined) {
+  if (ip === undefined) return '';
+  if (typeof ip === 'string') return ip.split(',')[0].trim();
+  if (Array.isArray(ip) && typeof ip[0] === 'string') return ip[0];
+  return '';
+}
+
 export async function customRequest(request: IncomingMessage): Promise<CustomRequest> {
   const req = request as CustomRequest;
-  const url = new URL(req.url || '', 'http://localhost:3000');
+
+  req.baseurl = `https://${SERVER_NAME}`;
+  const url = new URL(req.url || '', req.baseurl);
 
   // Parse de URL e inicialização de objetos auxiliares
   req.query = url.searchParams;
@@ -23,9 +33,8 @@ export async function customRequest(request: IncomingMessage): Promise<CustomReq
   req.params = {};
   req.body = {};
   req.cookies = parseCookies(req.headers.cookie);
-  req.ip = req.socket.remoteAddress || '127.0.0.1';
+  req.ip = getIp(req.headers['x-forwarded-for']);
   req.session = null;
-  req.baseurl = 'http://localhost:3000';
 
   return req;
 }

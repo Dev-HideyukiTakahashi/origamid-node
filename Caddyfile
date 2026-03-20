@@ -1,0 +1,108 @@
+{
+    # E-mail para emissão de certificados SSL via Let's Encrypt/ZeroSSL
+    email {$ACME_EMAIL}
+}
+
+# --- Bloco de Desenvolvimento / Micro-frontend local ---
+http://front.localhost {
+    root * /front/local
+    # try_files: Essencial para SPAs (React/Vue/Next), redireciona rotas internas para o index.html
+    try_files {path} {path}/ /index.html
+    file_server
+}
+
+# --- Bloco Principal (Configuração de Produção) ---
+{$SERVER_NAME} {
+    # Zstd e Gzip: Reduzem o tamanho dos arquivos enviados, melhorando o LCP (performance)
+    encode zstd gzip
+
+    # --- Matchers (Seletores de Rota) ---
+    @api path /api/*
+    @notAPI not path /api/*
+    @cors_preflight {
+        method OPTIONS
+        path /api/*
+    }
+
+    # --- 1. Resposta Imediata ao Preflight (CORS) ---
+    # Evita que o Node.js tenha que processar requisições OPTIONS
+    handle @cors_preflight {
+        respond 204
+    }
+
+    # --- 2. Headers Globais de Segurança ---
+    header {
+        # HSTS: Impede ataques de "downgrade" de HTTPS para HTTP
+        Strict-Transport-Security "max-age=15552000; includeSubDomains"
+        # Referrer-Policy: Protege a privacidade do usuário não enviando a URL de origem
+        Referrer-Policy "no-referrer"
+        # X-Content-Type-Options: Força o navegador a respeitar o MIME-type (previne XSS via upload)
+        X-Content-Type-Options "nosniff"
+        # Remoção de assinaturas: Dificulta a identificação da stack por atacantes
+        -Server
+        -X-Powered-By
+        -Via
+    }
+
+    # --- 3. Headers Específicos para API (CORS Real) ---
+    header @api {
+        Access-Control-Allow-Origin http://front.localhost
+        Access-Control-Allow-Methods "GET, POST, PUT, DELETE, OPTIONS"
+        Access-Control-Allow-Headers "Content-Type, Authorization"
+        Access-Control-Allow-Credentials true
+        Access-control-Max-Age 600
+    }
+    
+    # --- 4. Headers de "Hardening" (Estilo Helmet) para o Frontend ---
+    header @notAPI {
+        # CSP: A defesa mais forte contra XSS. Define o que pode ou não ser carregado.
+        Content-Security-Policy "base-uri 'self'; frame-ancestors 'self'; object-src 'none'; form-action 'self'; upgrade-insecure-requests;"
+        
+        # Isolamento de Processo no Navegador (Previne vazamento de dados via Spectre/Meltdown)
+        Cross-Origin-Opener-Policy "same-origin"
+        Cross-Origin-Embedder-Policy "require-corp"
+        Cross-Origin-Resource-Policy "same-origin"
+        Origin-Agent-Cluster "?1"
+        
+        # Proteções Extras
+        X-DNS-Prefetch-Control "off"
+        X-Download-Options "noopen"
+        X-Frame-Options "deny" # Impede que seu site seja colocado em um <iframe> (Anti-Clickjacking)
+        X-Permitted-Cross-Domain-Policies "none"
+        X-XSS-Protection "0" # Desativa filtro legado em favor da CSP moderna
+        
+        # Privacy & Device Security: Bloqueia acesso a hardware por padrão
+        Permissions-Policy "camera=(), microphone=(), geolocation=(), usb=(), payment=()"
+    }
+    
+    # --- 5. Roteamento de Backend (Proxy Reverso) ---
+    handle_path /api/* {
+        reverse_proxy node:3000
+    }
+
+    # --- 6. Servidor de Arquivos Públicos ---
+    handle_path /files/public/* {
+        root * /files/public
+        file_server
+    }
+
+    # --- 7. Arquivos Privados (X-Accel-Redirect) ---
+    # Otimização: O Node autoriza, o Caddy faz o streaming direto do disco (Zero-copy)
+    handle_path /files/private/* {
+        reverse_proxy node:3000 {
+            @accel header X-Accel-Redirect *
+            handle_response @accel {
+                root * /files/private
+                rewrite * {rp.header.X-Accel-Redirect}
+                file_server
+            }
+        }
+    }
+
+    # --- 8. Rota Padrão (Frontend) ---
+    route {
+        root * /front
+        try_files {path} {path}/ /index.html
+        file_server
+    }
+}

@@ -9,7 +9,7 @@ export class Database extends DatabaseSync {
 
     this.exec(`
       PRAGMA foreign_keys = 1;
-      PRAGMA journal_mode = DELETE;
+      PRAGMA journal_mode = WAL;
       PRAGMA synchronous = NORMAL;
 
       PRAGMA cache_size = 2000;

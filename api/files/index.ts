@@ -7,15 +7,18 @@ import { checkEtag, LimitBytes, mimeType } from './utils.ts';
 import { rename, rm, stat } from 'node:fs/promises';
 import { RouteError } from '../../core/utils/route-error.ts';
 import { randomUUID } from 'node:crypto';
+import { AuthMiddleware } from '../auth/middleware/auth.ts';
+import { FILES_PATH } from '../../env.ts';
 
 const MAX_BYTES = 150 * 1024 * 1024; // 150 MB
-const FILES_PATH = './files';
 
 export class FilesApi extends Api {
+  auth = new AuthMiddleware(this.core);
+
   handlers = {
-    sendFile: async (req, res) => {
+    publicFile: async (req, res) => {
       const name = validate.file(req.params.name);
-      const filePath = path.join(FILES_PATH, name);
+      const filePath = path.join(FILES_PATH, 'public', name);
       const ext = path.extname(name);
       let st;
 
@@ -60,11 +63,13 @@ export class FilesApi extends Api {
       }
 
       const name = validate.file(req.headers['x-filename']);
+      const visibility =
+        validate.optional.string(req.headers['x-visibility']) === 'public' ? 'public' : 'private';
       const now = Date.now();
       const ext = path.extname(name);
       const finalName = `${name.replace(ext, '')}-${now}${ext}`;
-      const tempPath = path.join(FILES_PATH, `${randomUUID()}.temp`);
-      const writePath = path.join(FILES_PATH, finalName);
+      const tempPath = path.join(FILES_PATH, visibility, `${randomUUID()}.temp`);
+      const writePath = path.join(FILES_PATH, visibility, finalName);
       const writeStream = createWriteStream(tempPath, { flags: 'wx' });
 
       try {
@@ -81,10 +86,17 @@ export class FilesApi extends Api {
         await rm(tempPath, { force: true }).catch(() => {});
       }
     },
+
+    privateFile: async (req, res) => {
+      const name = validate.file(req.params.name);
+      res.setHeader('X-Accel-Redirect', name);
+      res.status(200).end();
+    },
   } satisfies Api['handlers'];
 
   routes(): void {
-    this.router.get('/files/:name', this.handlers.sendFile);
-    this.router.post('/files', this.handlers.uploadFile);
+    this.router.get('/files/public/:name', this.handlers.publicFile);
+    this.router.get('/files/private/:name', this.handlers.privateFile, [this.auth.guard('user')]);
+    this.router.post('/files/upload', this.handlers.uploadFile);
   }
 }
